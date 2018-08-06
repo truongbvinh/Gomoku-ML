@@ -11,6 +11,11 @@ checkpoint_dir = os.path.dirname(checkpoint_path)
 
 
 def create_model():
+	"""
+	Creates a keras CNN model. Several convolution and maxpooling layers,
+	followed by densely connected layers to a softmax output layer
+	"""
+
 	model = keras.Sequential([
 		keras.layers.Conv2D(input_shape=(15,15,1), filters=1024, 
 							kernel_size=(5,5), padding="same",
@@ -27,7 +32,7 @@ def create_model():
 							kernel_size=(3,3), padding="same",
 							data_format="channels_last"),
 
-		# keras.layers.Flatten(),
+		keras.layers.Flatten(),
 		keras.layers.Dense(256, activation = tf.nn.relu),
 		keras.layers.Dropout(0.6),
 
@@ -47,10 +52,17 @@ def create_model():
 	return model
 
 def generate_training_info(model1, certainty_percentile):
+	"""
+	Makes the model play a full game against itself. The game stops
+	if the model either wins or makes 5 invalid moves in a row
+
+	Keywords arguments:
+	model1 -- The model to predict the next move
+	certainty_percentile -- will choose the move in the top n% of predictions.
+	"""
 	result = []
 	data = 0
 	game = connect5.GameBoard()
-	# game.training_baord()
 	env = []
 	scores = []
 	actions = []
@@ -110,6 +122,20 @@ def generate_training_info(model1, certainty_percentile):
 	return result
 
 def generate_training_set(model1, num_elements):
+	"""
+	Generates a set of data, returns a list of 3 lists.
+	The first includes board state data for each move
+	The second includes the moves taken by each player
+	The third includes the scores for each move (discounted)
+
+	NOTE: there are two of these sets per game, so even though
+	one model plays a game by itself, it generates two sets, one
+	for each player
+
+	Keyword Arguments:
+	model1 -- the model to play the games
+	num_elements -- the number of games to play
+	"""
 	results = []
 	for x in range(num_elements):
 		results.extend(generate_training_info(model1, 85))
@@ -124,9 +150,17 @@ def generate_training_set(model1, num_elements):
 	return ret
 
 def switch_data(current):
+	"""
+	used in generate_training_info to split up data
+	by player
+	"""
 	return 1 if current==0 else 0
 
 def discount(r, gamma, normal):
+	"""
+	will discount the moves so that moves that lead
+	to good moves will get some extra points
+	"""
     discount = np.zeros_like(r)
     G = 0.0
     for i in reversed(range(0, len(r))):
