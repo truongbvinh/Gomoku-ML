@@ -112,14 +112,14 @@ class GameBoard:
 		"""
 
 		counter = 0
+		end = {0:" ", 1:"'"}
 		print("  0 1 2 3 4 5 6 7 8 9 0'1'2'3'4'")
 		for row in self.gameboard:
-			print(counter, end=" ")
+			print(counter%10, end=end[counter//10])
 			for col in row:
 				print(for_print[col], end=" ")
 			print()
 			counter += 1
-			counter %= 10
 
 		if self.game_over == False:
 			print("NEXT TURN: {}".format(for_print[self.turn]))
@@ -205,8 +205,9 @@ class GameBoard:
 			icol = i % 10
 			temp = []
 			for row in range(5):
-				temp.append(self.gameboard[irow+row][icol:icol+5])
-			if temp.sum != 0:
+				temp.append(np.array(self.gameboard[irow+row][icol:icol+5]))
+			temp = np.array(temp)
+			if temp.sum() != 0:
 				# only add the snippet if it has a piece in it
 				result.append(temp)
 
