@@ -191,6 +191,32 @@ class GameBoard:
 					score += 50
 		return score
 
+	def split_board(self):
+		"""
+		splits up the board into smaller board, using a "filter" size of 5x5,
+		and moves the filter over by 1 row and 1 col as to not miss out on any
+		patterns. The reason the filter is 5x5 is because we want to catch patterns
+		that are 5 or less pieces in length
+		"""
+		result = []
+		irow, icol = 0, 0
+		for i in range(100):
+			irow = i // 10
+			icol = i % 10
+			temp = []
+			for row in range(5):
+				temp.append(self.gameboard[irow+row][icol:icol+5])
+			if temp.sum != 0:
+				# only add the snippet if it has a piece in it
+				result.append(temp)
+
+		# add in empty snippet in case the board has no pieces
+		if len(result) == 0:
+			result.append(temp)
+
+		return np.array(result)
+
+
 
 	'''
 	Right now, this isn't used. I was thinking of awarding points for
