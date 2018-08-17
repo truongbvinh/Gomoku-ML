@@ -112,14 +112,14 @@ class GameBoard:
 		"""
 
 		counter = 0
+		end = {0:" ", 1:"'"}
 		print("  0 1 2 3 4 5 6 7 8 9 0'1'2'3'4'")
 		for row in self.gameboard:
-			print(counter, end=" ")
+			print(counter%10, end=end[counter//10])
 			for col in row:
 				print(for_print[col], end=" ")
 			print()
 			counter += 1
-			counter %= 10
 
 		if self.game_over == False:
 			print("NEXT TURN: {}".format(for_print[self.turn]))
@@ -190,6 +190,33 @@ class GameBoard:
 				else:
 					score += 50
 		return score
+
+	def split_board(self):
+		"""
+		splits up the board into smaller board, using a "filter" size of 5x5,
+		and moves the filter over by 1 row and 1 col as to not miss out on any
+		patterns. The reason the filter is 5x5 is because we want to catch patterns
+		that are 5 or less pieces in length
+		"""
+		result = []
+		irow, icol = 0, 0
+		for i in range(100):
+			irow = i // 10
+			icol = i % 10
+			temp = []
+			for row in range(5):
+				temp.append(np.array(self.gameboard[irow+row][icol:icol+5]))
+			temp = np.array(temp)
+			if temp.sum() != 0:
+				# only add the snippet if it has a piece in it
+				result.append(temp)
+
+		# add in empty snippet in case the board has no pieces
+		if len(result) == 0:
+			result.append(temp)
+
+		return np.array(result)
+
 
 
 	'''

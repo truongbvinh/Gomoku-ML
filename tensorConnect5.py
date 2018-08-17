@@ -1,3 +1,12 @@
+"""
+Author Vinh Truong
+
+Convolution Neural Network to play games against itself and train based on
+the data produced.
+Works with my implementation of connect5.py
+Changed from classification model to a regression model to score and choose the
+best move
+"""
 import tensorflow as tf
 import numpy as np
 import connect5
@@ -6,6 +15,7 @@ import os
 from tensorflow import keras
 
 gamma = 0.75
+split_size = 10
 checkpoint_path = "connect_5/connect5_model.h5"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
@@ -42,7 +52,7 @@ def create_model():
 		keras.layers.Dense(512, activation = tf.nn.relu),
 		keras.layers.Dropout(0.6),
 
-		keras.layers.Dense(225, activation = tf.nn.softmax)
+		keras.layers.Dense(1, activation = "sigmoid")
 	])
 
 	model.compile(optimizer = keras.optimizers.Adam(),
@@ -63,53 +73,48 @@ def generate_training_info(model1, certainty_percentile):
 	result = []
 	data = 0
 	game = connect5.GameBoard()
-	env = []
-	scores = []
-	actions = []
 	result.append([[],[],[]])
 	result.append([[],[],[]])
-	timeout = 0
+	maximum = {"score":0.0}
 
-	while not game.game_over and timeout < 6:
+	while not game.game_over:
 		# game._print_board()
 
-		board = np.array([game.gameboard])
-		board = board.reshape(board.shape[0], 15, 15, 1)
-		predictions = model1.predict(board)[0]
-		print(predictions.shape)
-		# print(predictions)
+		for i in range(225):
+			try:
+				copy = game.copy()
+				copy.make_move(i//15,i%15)
+				board = np.array([copy.gameboard])
+				board = board.reshape(board.shape[0], 15, 15, 1)
 
-		choice_limit = (int)(((100-certainty_percentile)/100)*224) + 1
-		coord = random.randrange(choice_limit)
-		coord = predictions.argsort()[::-1][coord]
+				predictions = model1.predict(board)[0]
+				# print(predictions)
+				if predictions[0] > maximum["score"]:
+					maximum["score"] = predictions[0]
+					maximum["board"] = copy
+					maximum["move"] = (i//15,i%15)
 
-		row, col = coord//15, coord%15
-		# print(row, col)
+				
 
+			except connect5.InvalidMoveError:
+				pass
+
+		result[data][1].append(game.score_move(maximum["move"][0], maximum["move"][1]))
+		game = maximum["board"]
 		result[data][0].append(np.array([game.gameboard]) / 2)
-		result[data][1].append(coord)
-		result[data][2].append(game.score_move(row, col))
 
 		# print(coord, game.score_move(row, col))
-
-		try:
-
-			game.make_move(row, col)
-			game.flip_board()
-			# game._switch_turn()
-			data = switch_data(data)
-			# game._print_board() 
-			timeout = 0
-		except connect5.InvalidMoveError:
-			timeout += 1
-			continue
+		game.flip_board()
+		# game._switch_turn()
+		data = switch_data(data)
+		# game._print_board() 
 
 	if game.game_over:
 		result[switch_data(data)][2][-1] = -100
 		# print("SOMEONE WONNNNN at ", row, col)
 
-	result[0][2] = discount(result[0][2], gamma, False)
-	result[1][2] = discount(result[1][2], gamma, False)
+	result[0][1] = discount(result[0][2], gamma, True)
+	result[1][1] = discount(result[1][2], gamma, True)
 
 	# print(result[0][1])
 	# print(result[0][2])
@@ -137,10 +142,10 @@ def generate_training_set(model1, num_elements):
 	num_elements -- the number of games to play
 	"""
 	results = []
-	for x in range(num_elements):
+	for _ in range(num_elements):
 		results.extend(generate_training_info(model1, 85))
 
-	ret = max(results, key= lambda x: sum(x[2]))
+	ret = max(results, key= lambda x: sum(x[1]))
 
 	ret[0] = np.array(ret[0])
 	ret[0] = ret[0].reshape(ret[0].shape[0], 15, 15, 1)
@@ -161,17 +166,17 @@ def discount(r, gamma, normal):
 	will discount the moves so that moves that lead
 	to good moves will get some extra points
 	"""
-    discount = np.zeros_like(r)
-    G = 0.0
-    for i in reversed(range(0, len(r))):
-        G = G * gamma + r[i]
-        discount[i] = G
-    # Normalize 
-    if normal:
-        mean = np.mean(discount)
-        std = np.std(discount)
-        discount = (discount - mean) / (std)
-    return discount
+	discount = np.zeros_like(r)
+	G = 0.0
+	for i in reversed(range(0, len(r))):
+		G = G * gamma + r[i]
+		discount[i] = G
+	# Normalize 
+	if normal:
+		mean = np.mean(discount)
+		std = np.std(discount)
+		discount = (discount - mean) / (std)
+	return discount
 
 if __name__ == "__main__":
 	model1 = create_model()
