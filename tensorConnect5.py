@@ -76,8 +76,11 @@ def generate_training_info(model1, certainty_percentile):
 	result.append([[],[],[]])
 	result.append([[],[],[]])
 	maximum = {"score":0.0}
+	# percent = 0
 
 	while not game.game_over:
+		# print(percent)
+		# percent += 1
 		# game._print_board()
 
 		for i in range(225):
@@ -142,7 +145,10 @@ def generate_training_set(model1, num_elements):
 	num_elements -- the number of games to play
 	"""
 	results = []
+	percent_done = 0
 	for _ in range(num_elements):
+		print("Generating... {}%\r".format(percent_done))
+		percent_done += 100//num_elements
 		results.extend(generate_training_info(model1, 85))
 
 	ret = max(results, key= lambda x: sum(x[1]))
@@ -183,7 +189,7 @@ if __name__ == "__main__":
 	gen = 0
 	try:
 		while True:
-			data = generate_training_set(model1, 100)
+			data = generate_training_set(model1, 10)
 			print("Generation", gen)
 
 			model1.fit(data[0], data[1], epochs=5)
