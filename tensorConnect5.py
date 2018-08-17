@@ -1,3 +1,12 @@
+"""
+Author Vinh Truong
+
+Convolution Neural Network to play games against itself and train based on
+the data produced.
+Works with my implementation of connect5.py
+Changed from classification model to a regression model to score and choose the
+best move
+"""
 import tensorflow as tf
 import numpy as np
 import connect5
