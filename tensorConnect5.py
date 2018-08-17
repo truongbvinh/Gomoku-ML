@@ -14,7 +14,7 @@ import random
 import os
 from tensorflow import keras
 
-gamma = 0.75
+gamma = 0.99
 split_size = 10
 checkpoint_path = "connect_5/connect5_model.h5"
 checkpoint_dir = os.path.dirname(checkpoint_path)
@@ -76,12 +76,13 @@ def generate_training_info(model1, certainty_percentile):
 	result.append([[],[],[]])
 	result.append([[],[],[]])
 	maximum = {"score":0.0}
-	# percent = 0
+	# percent, timeout = 0, 0
 
 	while not game.game_over:
 		# print(percent)
 		# percent += 1
-		# game._print_board()
+		game._print_board()
+		maximum["score"]=0.0
 
 		for i in range(225):
 			try:
@@ -102,7 +103,7 @@ def generate_training_info(model1, certainty_percentile):
 			except connect5.InvalidMoveError:
 				pass
 
-		result[data][1].append(game.score_move(maximum["move"][0], maximum["move"][1]))
+		result[data][1].append(0)
 		game = maximum["board"]
 		result[data][0].append(np.array([game.gameboard]) / 2)
 
@@ -113,11 +114,11 @@ def generate_training_info(model1, certainty_percentile):
 		# game._print_board() 
 
 	if game.game_over:
-		result[switch_data(data)][2][-1] = -100
+		result[data][1][-1] = 100
 		# print("SOMEONE WONNNNN at ", row, col)
 
-	result[0][1] = discount(result[0][2], gamma, True)
-	result[1][1] = discount(result[1][2], gamma, True)
+	result[0][1] = discount(result[0][1], gamma, True)
+	result[1][1] = discount(result[1][1], gamma, True)
 
 	# print(result[0][1])
 	# print(result[0][2])
@@ -189,7 +190,7 @@ if __name__ == "__main__":
 	gen = 0
 	try:
 		while True:
-			data = generate_training_set(model1, 10)
+			data = generate_training_set(model1, 1)
 			print("Generation", gen)
 
 			model1.fit(data[0], data[1], epochs=5)
