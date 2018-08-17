@@ -56,7 +56,7 @@ def create_model():
 	])
 
 	model.compile(optimizer = keras.optimizers.Adam(),
-		loss = "sparse_categorical_crossentropy",
+		loss = "mean_squared_error",
 		metrics = ["accuracy"])
 
 	return model
