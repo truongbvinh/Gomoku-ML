@@ -12,10 +12,11 @@ import numpy as np
 import connect5
 import random
 import os
+from heap import maxHeap
 from tensorflow import keras
 
 gamma = 0.99
-split_size = 10
+board_size = 64
 checkpoint_path = "connect_5/connect5_model.h5"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
@@ -38,9 +39,9 @@ def create_model():
 							kernel_size=(3,3), padding="same",
 							data_format="channels_last"),
 
-		keras.layers.Conv2D(input_shape=(5,5,256), filters=128,
-							kernel_size=(3,3), padding="same",
-							data_format="channels_last"),
+		# keras.layers.Conv2D(input_shape=(5,5,256), filters=128,
+		# 					kernel_size=(3,3), padding="same",
+		# 					data_format="channels_last"),
 
 		keras.layers.Flatten(),
 		keras.layers.Dense(256, activation = tf.nn.relu),
@@ -68,69 +69,54 @@ def generate_training_info(model1, certainty_percentile):
 
 	Keywords arguments:
 	model1 -- The model to predict the next move
-	certainty_percentile -- will choose the move in the top n% of predictions.
 	"""
 	result = []
 	data = 0
 	game = connect5.GameBoard()
-	result.append([[],[],[]])
-	result.append([[],[],[]])
-	maximum = {"score":0.0}
-	# percent, timeout = 0, 0
+	result.append([[],[]])
+	result.append([[],[]])
 
 	while not game.game_over:
-		# print(percent)
-		# percent += 1
 		game._print_board()
-		maximum["score"]=0.0
+		moves = []
+		next_move = None
 
-		for i in range(225):
+		for i in range(64):
 			try:
 				copy = game.copy()
-				copy.make_move(i//15,i%15)
+				copy.make_move(i//8,i%8)
 				board = np.array([copy.gameboard])
 				board = board.reshape(board.shape[0], 15, 15, 1)
 
 				predictions = model1.predict(board)[0]
-				# print(predictions)
-				if predictions[0] > maximum["score"]:
-					maximum["score"] = predictions[0]
-					maximum["board"] = copy
-					maximum["move"] = (i//15,i%15)
-
+				moves.append((predictions[0], (i//8,i%8)))
 				
-
 			except connect5.InvalidMoveError:
 				pass
+		
+		moves = maxHeap(moves, key=lambda x:x[0])
+		for _ in range(random.randint(1, int(certainty_percentile*board_size)+1)):
+			if len(moves.tree) == 1:
+				break
+			next_move = moves.pop()[1]
+		game.make_move(next_move[0], next_move[1])
 
 		result[data][1].append(0)
-		game = maximum["board"]
 		result[data][0].append(np.array([game.gameboard]) / 2)
 
-		# print(coord, game.score_move(row, col))
 		game.flip_board()
-		# game._switch_turn()
 		data = switch_data(data)
-		# game._print_board() 
 
 	if game.game_over:
-		result[data][1][-1] = 100
-		# print("SOMEONE WONNNNN at ", row, col)
+		result[data][1][-1] = 225
+		result[switch_data(data)][1][-1] = -50
 
 	result[0][1] = discount(result[0][1], gamma, True)
 	result[1][1] = discount(result[1][1], gamma, True)
 
-	# print(result[0][1])
-	# print(result[0][2])
-	# print(result[1][1])
-	# print(result[1][2])
-
-	# game._print_board()
-
-
 	return result
 
-def generate_training_set(model1, num_elements):
+def generate_training_set(model1, num_elements, certainty_percentile):
 	"""
 	Generates a set of data, returns a list of 3 lists.
 	The first includes board state data for each move
@@ -145,21 +131,31 @@ def generate_training_set(model1, num_elements):
 	model1 -- the model to play the games
 	num_elements -- the number of games to play
 	"""
-	results = []
 	percent_done = 0
+	result = [[],[]]
+	train, target = 0, 1
 	for _ in range(num_elements):
 		print("Generating... {}%\r".format(percent_done))
 		percent_done += 100//num_elements
-		results.extend(generate_training_info(model1, 85))
-
-	ret = max(results, key= lambda x: sum(x[1]))
-
-	ret[0] = np.array(ret[0])
-	ret[0] = ret[0].reshape(ret[0].shape[0], 15, 15, 1)
-	ret[1] = np.array(ret[1])
+		temp = (generate_training_info(model1, certainty_percentile))
+		# print(temp[0][1])
+		result[train].append(temp[0][0])
+		result[train].append(temp[1][0])
+		result[target].append(temp[0][1])
+		result[target].append(temp[1][1])
 	
+	max_score = 0
+	max_index = 0
+	for i in range(len(result[target])):
+		if result[target][i][0] > max_score:
+			max_score = result[target][i][0]
+			max_index = i
+	result[train] = np.array(result[train][max_index])
+	result[train] = result[train].reshape(result[train].shape[0], 15, 15, 1)
+	result[target] = np.array(result[target][max_index])
+	# print(result[target])
 
-	return ret
+	return (result[train], result[target])
 
 def switch_data(current):
 	"""
@@ -190,10 +186,10 @@ if __name__ == "__main__":
 	gen = 0
 	try:
 		while True:
-			data = generate_training_set(model1, 1)
+			data = generate_training_set(model1, 1, .15)
 			print("Generation", gen)
 
-			model1.fit(data[0], data[1], epochs=5)
+			model1.fit(data[0], data[1], epochs=2)
 			gen += 1
 
 	except KeyboardInterrupt:
@@ -201,7 +197,7 @@ if __name__ == "__main__":
 		model1.save(checkpoint_dir)
 		print("Saved!")
 
-		data = generate_training_set(model1, 100)
+		data = generate_training_set(model1, 1, 0.1)
 		print("so far,")
 		temp = (data[0][-1])
 		ref = {0.0: "-", 0.5: "X", 1.0:"O"}
@@ -209,10 +205,3 @@ if __name__ == "__main__":
 			for piece in [x[0] for x in thing]:
 				print(ref[piece],end=" ")
 			print()
-
-
-
-
-
-
-
