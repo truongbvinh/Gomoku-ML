@@ -11,6 +11,7 @@ import tensorflow as tf
 import numpy as np
 import connect5
 import random
+import sys
 import os
 from heap import maxHeap
 from tensorflow import keras
@@ -29,7 +30,7 @@ def create_model():
 
 	model = keras.Sequential([
 		keras.layers.Conv2D(input_shape=(15,15,1), filters=1024, 
-							kernel_size=(5,5), padding="same",
+							kernel_size=(5,5), padding="valid",
 							data_format="channels_last"),
 
 		keras.layers.MaxPool2D(input_shape=(1,15,15,1024),pool_size=3,
@@ -39,9 +40,9 @@ def create_model():
 							kernel_size=(3,3), padding="same",
 							data_format="channels_last"),
 
-		# keras.layers.Conv2D(input_shape=(5,5,256), filters=128,
-		# 					kernel_size=(3,3), padding="same",
-		# 					data_format="channels_last"),
+		keras.layers.Conv2D(input_shape=(5,5,256), filters=128,
+							kernel_size=(3,3), padding="same",
+							data_format="channels_last"),
 
 		keras.layers.Flatten(),
 		keras.layers.Dense(256, activation = tf.nn.relu),
@@ -62,7 +63,7 @@ def create_model():
 
 	return model
 
-def generate_training_info(model1, certainty_percentile):
+def generate_training_info(model1, certainty_percentile, verbose=False):
 	"""
 	Makes the model play a full game against itself. The game stops
 	if the model either wins or makes 5 invalid moves in a row
@@ -77,7 +78,16 @@ def generate_training_info(model1, certainty_percentile):
 	result.append([[],[]])
 
 	while not game.game_over:
-		game._print_board()
+		if verbose:
+			if data == 0:
+				sys.stdout.write((str(game)))
+				sys.stdout.flush()
+			if data == 1:
+				output = game.copy()
+				output.flip_board()
+				sys.stdout.write((str(output)))
+				sys.stdout.flush()
+		
 		moves = []
 		next_move = None
 
@@ -99,6 +109,8 @@ def generate_training_info(model1, certainty_percentile):
 			if len(moves.tree) == 1:
 				break
 			next_move = moves.pop()[1]
+		if next_move == None:
+			break
 		game.make_move(next_move[0], next_move[1])
 
 		result[data][1].append(0)
@@ -107,16 +119,16 @@ def generate_training_info(model1, certainty_percentile):
 		game.flip_board()
 		data = switch_data(data)
 
-	if game.game_over:
+	if game.game_over and game.game_over != -1:
 		result[data][1][-1] = 225
 		result[switch_data(data)][1][-1] = -50
 
-	result[0][1] = discount(result[0][1], gamma, True)
-	result[1][1] = discount(result[1][1], gamma, True)
+	result[0][1] = discount(result[0][1], gamma, False)
+	result[1][1] = discount(result[1][1], gamma, False)
 
 	return result
 
-def generate_training_set(model1, num_elements, certainty_percentile):
+def generate_training_set(model1, num_elements, certainty_percentile, verbose=False):
 	"""
 	Generates a set of data, returns a list of 3 lists.
 	The first includes board state data for each move
@@ -135,9 +147,9 @@ def generate_training_set(model1, num_elements, certainty_percentile):
 	result = [[],[]]
 	train, target = 0, 1
 	for _ in range(num_elements):
-		print("Generating... {}%\r".format(percent_done))
-		percent_done += 100//num_elements
-		temp = (generate_training_info(model1, certainty_percentile))
+		print("Generating... {}%\r".format((percent_done*100)//num_elements))
+		percent_done += 1
+		temp = (generate_training_info(model1, certainty_percentile, verbose))
 		# print(temp[0][1])
 		result[train].append(temp[0][0])
 		result[train].append(temp[1][0])
@@ -152,7 +164,7 @@ def generate_training_set(model1, num_elements, certainty_percentile):
 			max_index = i
 	result[train] = np.array(result[train][max_index])
 	result[train] = result[train].reshape(result[train].shape[0], 15, 15, 1)
-	result[target] = np.array(result[target][max_index])
+	result[target] = np.array(result[target][max_index])/225
 	# print(result[target])
 
 	return (result[train], result[target])
@@ -183,11 +195,11 @@ def discount(r, gamma, normal):
 
 if __name__ == "__main__":
 	model1 = create_model()
-	gen = 0
+	gen = 1
 	try:
 		while True:
-			data = generate_training_set(model1, 1, .15)
-			print("Generation", gen)
+			data = generate_training_set(model1, 10, max(0.05, 1/gen), True)
+			print("Generation", gen-1)
 
 			model1.fit(data[0], data[1], epochs=2)
 			gen += 1
@@ -197,7 +209,7 @@ if __name__ == "__main__":
 		model1.save(checkpoint_dir)
 		print("Saved!")
 
-		data = generate_training_set(model1, 1, 0.1)
+		data = generate_training_set(model1, 5, 0.1, True)
 		print("so far,")
 		temp = (data[0][-1])
 		ref = {0.0: "-", 0.5: "X", 1.0:"O"}
