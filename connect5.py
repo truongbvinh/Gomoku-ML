@@ -66,6 +66,7 @@ class GameBoard:
 		Returns the winner of the game. If there is no winner,
 		returns None instead.,
 		"""
+		is_filled = True
 		
 		for row in range(dim):
 			for col in range(dim):
@@ -73,6 +74,10 @@ class GameBoard:
 					temp = self._check_piece(row, col)
 					if temp != None:
 						return temp
+				else:
+					is_filled = False
+		if is_filled:
+			self.game_over = -1
 		return None
 
 	def _check_piece(self, row, col):
@@ -123,6 +128,23 @@ class GameBoard:
 
 		if self.game_over == False:
 			print("NEXT TURN: {}".format(for_print[self.turn]))
+	
+	def __str__(self):
+		"""
+		Returns a string display of the board
+		"""
+		result = ""
+		result += "  0 1 2 3 4 5 6 7 8 9 0'1'2'3'4'\n"
+		counter = 0
+		for row in self.gameboard:
+			result += "{} ".format(counter)
+			for col in row:
+				result += "{} ".format(for_print[col])
+			result += "\n"
+			counter += 1
+			counter %= 10
+		
+		return result + "\r"
 
 	def run_game(self):
 		"""
