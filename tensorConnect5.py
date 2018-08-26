@@ -4,8 +4,6 @@ Author Vinh Truong
 Convolution Neural Network to play games against itself and train based on
 the data produced.
 Works with my implementation of connect5.py
-Changed from classification model to a regression model to score and choose the
-best move
 """
 import tensorflow as tf
 import numpy as np
@@ -16,8 +14,8 @@ import os
 from heap import maxHeap
 from tensorflow import keras
 
-gamma = 0.99
-board_size = 64
+gamma = 0.75
+board_size = 225
 checkpoint_path = "connect_5/connect5_model.h5"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
@@ -30,7 +28,7 @@ def create_model():
 
 	model = keras.Sequential([
 		keras.layers.Conv2D(input_shape=(15,15,1), filters=1024, 
-							kernel_size=(5,5), padding="valid",
+							kernel_size=(5,5), padding="same",
 							data_format="channels_last"),
 
 		keras.layers.MaxPool2D(input_shape=(1,15,15,1024),pool_size=3,
@@ -91,15 +89,15 @@ def generate_training_info(model1, certainty_percentile, verbose=False):
 		moves = []
 		next_move = None
 
-		for i in range(64):
+		for i in range(225):
 			try:
 				copy = game.copy()
-				copy.make_move(i//8,i%8)
+				copy.make_move(i//15,i%15)
 				board = np.array([copy.gameboard])
 				board = board.reshape(board.shape[0], 15, 15, 1)
 
 				predictions = model1.predict(board)[0]
-				moves.append((predictions[0], (i//8,i%8)))
+				moves.append((predictions[0], (i//15,i%15)))
 				
 			except connect5.InvalidMoveError:
 				pass
@@ -111,20 +109,21 @@ def generate_training_info(model1, certainty_percentile, verbose=False):
 			next_move = moves.pop()[1]
 		if next_move == None:
 			break
-		game.make_move(next_move[0], next_move[1])
 
-		result[data][1].append(0)
+		result[data][1].append(game.score_move(next_move[0], next_move[1]))
 		result[data][0].append(np.array([game.gameboard]) / 2)
+
+		game.make_move(next_move[0], next_move[1])
 
 		game.flip_board()
 		data = switch_data(data)
 
 	if game.game_over and game.game_over != -1:
-		result[data][1][-1] = 225
-		result[switch_data(data)][1][-1] = -50
+		result[data][1][-1] += 225
+		result[switch_data(data)][1][-1] -= 50
 
-	result[0][1] = discount(result[0][1], gamma, False)
-	result[1][1] = discount(result[1][1], gamma, False)
+	result[0][1] = discount(result[0][1], gamma, True)
+	result[1][1] = discount(result[1][1], gamma, True)
 
 	return result
 
@@ -200,9 +199,9 @@ if __name__ == "__main__":
 		while True:
 			data = generate_training_set(model1, 10, max(0.05, 1/gen), True)
 			print("Generation", gen-1)
-
-			model1.fit(data[0], data[1], epochs=2)
 			gen += 1
+			model1.fit(data[0], data[1], epochs=2)
+			# model1.save(checkpoint_dir)
 
 	except KeyboardInterrupt:
 		print("Exiting, saving model...")
@@ -217,3 +216,10 @@ if __name__ == "__main__":
 			for piece in [x[0] for x in thing]:
 				print(ref[piece],end=" ")
 			print()
+"""
+z	  z
+z	z
+z z
+z z z z
+
+"""
