@@ -16,6 +16,7 @@ from tensorflow import keras
 
 gamma = 0.75
 board_size = 225
+epsilon_min = 0.1
 checkpoint_path = "connect_5/connect5_model.h5"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
@@ -52,7 +53,7 @@ def create_model():
 		keras.layers.Dense(512, activation = tf.nn.relu),
 		keras.layers.Dropout(0.6),
 
-		keras.layers.Dense(1, activation = "sigmoid")
+		keras.layers.Dense(225, activation = tf.nn.softmax)
 	])
 
 	model.compile(optimizer = keras.optimizers.Adam(),
@@ -61,7 +62,7 @@ def create_model():
 
 	return model
 
-def generate_training_info(model1, certainty_percentile, verbose=False):
+def generate_training_info(model1, epsilon, verbose=False):
 	"""
 	Makes the model play a full game against itself. The game stops
 	if the model either wins or makes 5 invalid moves in a row
@@ -72,10 +73,11 @@ def generate_training_info(model1, certainty_percentile, verbose=False):
 	result = []
 	data = 0
 	game = connect5.GameBoard()
-	result.append([[],[]])
-	result.append([[],[]])
+	result.append([[],[], None])
+	result.append([[],[], None])
 
 	while not game.game_over:
+		# Prints out the board for user observation
 		if verbose:
 			if data == 0:
 				sys.stdout.write((str(game)))
@@ -86,48 +88,45 @@ def generate_training_info(model1, certainty_percentile, verbose=False):
 				sys.stdout.write((str(output)))
 				sys.stdout.flush()
 		
-		moves = []
-		next_move = None
+		board = np.array([game.copy().gameboard])
+		board = board.reshape(board.shape[0], 15, 15, 1)
 
-		for i in range(225):
-			try:
-				copy = game.copy()
-				copy.make_move(i//15,i%15)
-				board = np.array([copy.gameboard])
-				board = board.reshape(board.shape[0], 15, 15, 1)
+		predictions = model1.predict(board)[0]
+		action = predictions
+		predictions = list(zip(range(board_size), predictions))
+		# predictions is a list of tuples, [(move, prediction_score), ...]
+			
+		predictions.sort(key=lambda x: x[1], reverse=True)
+		move = predictions[random.randint(0, int(epsilon*board_size)-1)][0]
+		# Picks a random move within the epsilon
+		action[move] = 1
+		# only affects the weight of the current move
 
-				predictions = model1.predict(board)[0]
-				moves.append((predictions[0], (i//15,i%15)))
-				
-			except connect5.InvalidMoveError:
-				pass
-		
-		moves = maxHeap(moves, key=lambda x:x[0])
-		for _ in range(random.randint(1, int(certainty_percentile*board_size)+1)):
-			if len(moves.tree) == 1:
-				break
-			next_move = moves.pop()[1]
-		if next_move == None:
-			break
+		try:
+			game.make_move(move//15, move%15)
 
-		result[data][1].append(game.score_move(next_move[0], next_move[1]))
-		result[data][0].append(np.array([game.gameboard]) / 2)
+			result[data][1].append(action)
+			result[data][0].append(np.array([game.gameboard]))
+			# result[data] contains the results of generating games, 
+			# result[data][0] are the envs, result[data][1] are the moves
+			# result[data][2] contains one elem, True if won, else False
 
-		game.make_move(next_move[0], next_move[1])
-
-		game.flip_board()
-		data = switch_data(data)
+			game.flip_board()
+			data = switch_data(data)
+		except connect5.InvalidMoveError:
+			# print("Invalid Move")
+			pass
 
 	if game.game_over and game.game_over != -1:
-		result[data][1][-1] += 225
-		result[switch_data(data)][1][-1] -= 50
+		result[data][2] = True
+		result[switch_data(data)][2] = False
 
-	result[0][1] = discount(result[0][1], gamma, True)
-	result[1][1] = discount(result[1][1], gamma, True)
+	# result[0][1] = discount(result[0][1], gamma, True)
+	# result[1][1] = discount(result[1][1], gamma, True)
 
 	return result
 
-def generate_training_set(model1, num_elements, certainty_percentile, verbose=False):
+def generate_training_set(model1, num_elements, epsilon, verbose=False):
 	"""
 	Generates a set of data, returns a list of 3 lists.
 	The first includes board state data for each move
@@ -145,25 +144,35 @@ def generate_training_set(model1, num_elements, certainty_percentile, verbose=Fa
 	percent_done = 0
 	result = [[],[]]
 	train, target = 0, 1
-	for _ in range(num_elements):
+
+	temp = (generate_training_info(model1, epsilon, verbose))
+
+	if temp[0][2] == True:
+		result[train] = temp[0][0]
+		result[target] = temp[0][1]
+	elif temp[1][2] == True:
+		# Need to elif in case that there is no winner
+		result[train] = temp[1][0]
+		result[target] = temp[1][1]
+
+	for _ in range(num_elements-1):
 		print("Generating... {}%\r".format((percent_done*100)//num_elements))
 		percent_done += 1
-		temp = (generate_training_info(model1, certainty_percentile, verbose))
-		# print(temp[0][1])
-		result[train].append(temp[0][0])
-		result[train].append(temp[1][0])
-		result[target].append(temp[0][1])
-		result[target].append(temp[1][1])
-	
-	max_score = 0
-	max_index = 0
-	for i in range(len(result[target])):
-		if result[target][i][0] > max_score:
-			max_score = result[target][i][0]
-			max_index = i
-	result[train] = np.array(result[train][max_index])
+		# Information for the user
+
+		temp = (generate_training_info(model1, epsilon, verbose))
+		
+		if temp[0][2] == True and len(temp[0][1]) < len(result[target]):
+			result[train] = temp[0][0]
+			result[target] = temp[0][1]
+		elif temp[1][2] == True and len(temp[1][1]) < len(result[target]):
+			# Need to elif in case that there is no winner
+			result[train] = temp[1][0]
+			result[target] = temp[1][1]
+
+	result[train] = np.array(result[train])
 	result[train] = result[train].reshape(result[train].shape[0], 15, 15, 1)
-	result[target] = np.array(result[target][max_index])/225
+	result[target] = np.array(result[target])
 	# print(result[target])
 
 	return (result[train], result[target])
@@ -192,12 +201,15 @@ def discount(r, gamma, normal):
 		discount = (discount - mean) / (std)
 	return discount
 
+
+
 if __name__ == "__main__":
 	model1 = create_model()
 	gen = 1
 	try:
 		while True:
-			data = generate_training_set(model1, 10, max(0.05, 1/gen), True)
+			# the epsilon is generated by max of 1/generation and the min (0.10)
+			data = generate_training_set(model1, 10, max(epsilon_min, 1/gen))
 			print("Generation", gen-1)
 			gen += 1
 			model1.fit(data[0], data[1], epochs=2)
@@ -216,10 +228,3 @@ if __name__ == "__main__":
 			for piece in [x[0] for x in thing]:
 				print(ref[piece],end=" ")
 			print()
-"""
-z	  z
-z	z
-z z
-z z z z
-
-"""
