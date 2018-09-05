@@ -190,6 +190,8 @@ class GameBoard:
 		"""
 		Assigns a score for the current player's intended placement.
 		Will give extra points of having multiple 
+
+		Does not make the move or change the board
 		"""
 		temp = self.copy()
 		if temp.gameboard[row][col] != 0:
@@ -204,7 +206,7 @@ class GameBoard:
 				for k in range(1,5):
 					try:
 						if temp.gameboard[row + (i*k)][col + (j*k)] == temp.turn:
-							score += 5*k
+							score += 5
 						else:
 							break
 					except:
