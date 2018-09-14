@@ -14,6 +14,7 @@ import os
 from math import log2
 from heap import maxHeap
 from tensorflow import keras
+from data_manipulation import generate_batch_equiv
 
 generations = 500
 
@@ -168,18 +169,17 @@ class Agent(object):
 		num_elements -- the number of games to play
 		"""
 		percent_done = 0
-		result = [[],[]]
-		train, target = 0, 1
+		train, target = [], []
 
 		temp = (self.generate_training_info(verbose))
 
 		if temp[0][2] == True:
-			result[train] = temp[0][0]
-			result[target] = temp[0][1]
+			train = temp[0][0]
+			target = temp[0][1]
 		elif temp[1][2] == True:
 			# Need to elif in case that there is no winner
-			result[train] = temp[1][0]
-			result[target] = temp[1][1]
+			train = temp[1][0]
+			target = temp[1][1]
 
 		print("Generating... {}%\r".format((percent_done*100)//num_elements))
 		for _ in range(num_elements-1):
@@ -189,21 +189,23 @@ class Agent(object):
 
 			print(np.argmax(target), np.argmin(target))
 			
-			if temp[0][2] == True and len(temp[0][1]) < len(result[target]):
-				result[train] = temp[0][0]
-				result[target] = temp[0][1]
-			elif temp[1][2] == True and len(temp[1][1]) < len(result[target]):
+			if temp[0][2] == True and len(temp[0][1]) < len(target):
+				train = temp[0][0]
+				target = temp[0][1]
+			elif temp[1][2] == True and len(temp[1][1]) < len(target):
 				# Need to elif in case that there is no winner
-				result[train] = temp[1][0]
-				result[target] = temp[1][1]
+				train = temp[1][0]
+				target = temp[1][1]
 			print("Generating... {}%\r".format((percent_done*100)//num_elements))
+		
+		train, target = generate_batch_equiv(train, target)
 
-		result[train] = np.array(result[train])
-		result[train] = result[train].reshape(result[train].shape[0], 15, 15, 1)
-		result[target] = np.array(result[target])
-		# print(result[target])
+		train = np.array(train)
+		train = train.reshape(train.shape[0], 15, 15, 1)
+		target = np.array(target)
+		# print(target)
 
-		return (result[train], result[target])
+		return (train, target)
 
 	def save_model(self):
 		self.model.save(self.checkpoint_dir)

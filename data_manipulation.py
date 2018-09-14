@@ -17,20 +17,15 @@ def generate_four_equiv(train, target):
         Second list contains 4 copies of target info, each
         matching the rotations of the board
     """
-    
-    """
-    [0, 1, 2, 3
-     4, 5, 6, 7
-     8, 9, 10,11
-     12,13,14,15]
-    """
     dim_row, dim_col = len(train), len(train[0])
-    transform = [target[x*dim_col:(x+1)*dim_col] for x in range(dim_row)]
-    train_result = [].append(train)
-    target_result = [].append(target)
+    transform = []
+    for x in range(dim_row):
+        transform.append(target[x*dim_col:(x+1)*dim_col])
+    train_result = [(train)]
+    target_result = [(target)]
     for i in range(1, 4):
         train_result.append(np.rot90(train, i))
-        target_result.append(np.rot90(transform, i).flatten)
+        target_result.append(np.rot90(transform, i).flatten())
     
     return (train_result, target_result)
 
@@ -44,3 +39,15 @@ def generate_batch_equiv(train_list, target_list):
         target_result.extend(new_target)
     
     return (train_result, target_result)
+
+if __name__ == "__main__":
+    x = np.array([[1,2,],[3,4]])
+    x = [x]
+    y = np.array([0.1,0.2,0.3,0.4])
+    y = [y]
+    train, target = (generate_batch_equiv(x, y))
+    for i, j in zip(train, target):
+        print(i, j)
+        print(type(i), type(j))
+    
+    
