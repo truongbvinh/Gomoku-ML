@@ -111,6 +111,7 @@ class Agent(object):
 					output.flip_board()
 					sys.stdout.write((str(output)))
 					sys.stdout.flush()
+				print("Generation: {}".format(self.generation), end="\r")
 			
 			board = np.array([game.copy().gameboard])
 			board = board.reshape(board.shape[0], 15, 15, 1)
@@ -131,7 +132,7 @@ class Agent(object):
 				game_copy.make_move(move//15, move%15)
 
 				result[data][1].append(action)
-				result[data][0].append(np.array([game.gameboard]))
+				result[data][0].append(game.gameboard)
 				# result[data] contains the results of generating games, 
 				# result[data][0] are the envs, result[data][1] are the moves
 				# result[data][2] contains one elem, True if won, else False
@@ -186,8 +187,6 @@ class Agent(object):
 			percent_done += 1
 			# Information for the user
 			temp = (self.generate_training_info(verbose))
-
-			print(np.argmax(target), np.argmin(target))
 			
 			if temp[0][2] == True and len(temp[0][1]) < len(target):
 				train = temp[0][0]
@@ -198,11 +197,12 @@ class Agent(object):
 				target = temp[1][1]
 			print("Generating... {}%\r".format((percent_done*100)//num_elements))
 		
+		train = np.array(train)
+		target = np.array(target)
+		
 		train, target = generate_batch_equiv(train, target)
 
-		train = np.array(train)
 		train = train.reshape(train.shape[0], 15, 15, 1)
-		target = np.array(target)
 		# print(target)
 
 		return (train, target)
