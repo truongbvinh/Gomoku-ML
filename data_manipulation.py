@@ -4,6 +4,29 @@ Author: Vinh Truong
 
 import numpy as np
 
+
+def extract_game_state(self, row, col):
+    """
+    Returns a list of 3 boards.
+        First board - Current player's pieces
+        Second board - Opponent's pieces
+        Third board - Last move
+    
+    The model always plays as White, so white
+    will be the 'current player'
+    """
+    result = np.zeros(3, dim, dim)
+    for row in range(dim):
+        for col in range(dim):
+            if self.gameboard[row][col] == 1:
+                result[0][row][col] = 1
+            elif self.gameboard[row][col] == 2:
+                result[1][row][col] = 1
+    
+    result[2][row][col] = 1
+
+    return result
+
 def generate_four_equiv(train, target):
     """
     Takes in a 2D numpy array (training info) and

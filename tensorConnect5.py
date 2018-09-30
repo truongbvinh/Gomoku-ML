@@ -14,7 +14,7 @@ import os
 from math import log2
 from heap import maxHeap
 from tensorflow import keras
-from data_manipulation import generate_batch_equiv
+from data_manipulation import generate_batch_equiv, extract_game_state
 
 generations = 500
 
@@ -131,7 +131,7 @@ class Agent(object):
 				game_copy.make_move(move//15, move%15)
 
 				result[data][1].append(action)
-				result[data][0].append(np.array([game.gameboard]))
+				result[data][0].append(game.gameboard)
 				# result[data] contains the results of generating games, 
 				# result[data][0] are the envs, result[data][1] are the moves
 				# result[data][2] contains one elem, True if won, else False

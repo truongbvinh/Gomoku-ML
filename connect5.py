@@ -241,51 +241,24 @@ class GameBoard:
 
 		return np.array(result)
 
+	def game_state(self):
+		"""
+		Returns a list of 3 boards.
+			First board - Current player's pieces
+			Second board - Opponent's pieces
+			Third board - Last move
+		"""
+		result = np.zeros(3, dim, dim)
+		for row in range(dim):
+			for col in range(dim):
+				if self.gameboard[row][col] == self.turn:
+					result[0][row][col] = 1
+				elif self.gameboard[row][col] != 0:
+					result[1][row][col] = 1
+		
+		result[2][self.last_move[0]][self.last_move[1]] = 1
 
-
-	'''
-	Right now, this isn't used. I was thinking of awarding points for
-	blocking combos of three 
-	'''
-	def _must_be_blocked(self):
-		result = []
-		for location in range(225):
-			row, col = location // 15, location % 15
-			if self.gameboard[row][col] != 0 and self.gameboard[row][col] != self.turn:
-				print(row, col)
-				for direction in range(5,9):
-					dy, dx = (direction//3)-1, (direction%3)-1
-					for counter in range(1,5):
-						try:
-							look_y, look_x = row+(dy*counter), col+(dx*counter)
-							# print(counter, dy, dx, look_y, look_x)
-							if self.gameboard[look_y][look_x] == self.gameboard[row][col]:
-								pass
-							elif counter == 3:
-								if self.gameboard[row-dy][col-dx] == 0 and self.gameboard[look_y][look_x] == 0:
-									result.append((row-dy, col-dx))
-									result.append((look_y, look_x))
-									break
-							elif counter == 4:
-								if self.gameboard[look_y][look_x] == 0:
-									result.append((look_y, look_x))
-								if self.gameboard[row-dy][col-dx] == 0:
-									result.append((row-dy, col-dx))
-									break
-							else:
-								break
-
-
-
-						except IndexError:
-							if counter == 4 and self.gameboard[row-dy][col-dx] == 0:
-								result.append((row-dy, col-dx))
-							break
 		return result
-
-
-
-
 
 
 
