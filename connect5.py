@@ -241,14 +241,14 @@ class GameBoard:
 
 		return np.array(result)
 
-	def game_state(self):
+	def game_state(self, next_row, next_col):
 		"""
 		Returns a list of 3 boards.
 			First board - Current player's pieces
 			Second board - Opponent's pieces
-			Third board - Last move
+			Third board - Empty board except board[next_row][next_col] = 1
 		"""
-		result = np.zeros(3, dim, dim)
+		result = np.zeros((3, dim, dim))
 		for row in range(dim):
 			for col in range(dim):
 				if self.gameboard[row][col] == self.turn:
@@ -256,7 +256,7 @@ class GameBoard:
 				elif self.gameboard[row][col] != 0:
 					result[1][row][col] = 1
 		
-		result[2][self.last_move[0]][self.last_move[1]] = 1
+		result[2][next_row][next_col] = 1
 
 		return result
 
