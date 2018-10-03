@@ -35,7 +35,7 @@ class Agent(object):
 		"""
 		Automatically updates the epsilon to be 1/(log2(generation))
 		"""
-		if self.epsilon > 0.1:
+		if self.epsilon > 0.1 and self.generation > 30:
 			self.epsilon = 1/log2(self.generation+2)
 		self.generation += 1
 
@@ -128,7 +128,7 @@ class Agent(object):
 				
 			valid_moves.sort(key=lambda x: x[1], reverse=True)
 			# Picks a random move within the epsilon
-			temp = valid_moves[random.randint(0, int(self.epsilon*self.board_size)-1)]
+			temp = valid_moves[random.randint(0, int(self.epsilon*len(valid_moves))-1)]
 			move, score = temp[0], temp[1]
 
 			del temp
