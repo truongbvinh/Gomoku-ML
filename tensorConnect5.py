@@ -103,6 +103,8 @@ class Agent(object):
 		game = connect5.GameBoard()
 		result.append([[],[], False])
 		result.append([[],[], False])
+		game.make_move(7, 7)
+
 
 		while not game.game_over:
 			# Prints out the board for user observation
@@ -117,7 +119,18 @@ class Agent(object):
 					sys.stdout.flush()
 				print("Generation:", self.generation, end="\r")
 			
-			valid_moves = [i for i in range(225) if game.gameboard[i//15][i%15] == 0]
+			valid_moves = set()
+			for piece in range(225):
+				row, col = piece//15, piece%15
+				if game.gameboard[row][col] != 0:
+					for i in range(-1,2):
+						for j in range(-1,2):
+							try:
+								if game.gameboard[row+i][col+j] == 0:
+									valid_moves.add((row+i,col+j))
+							except IndexError:
+								pass
+			valid_moves = list(valid_moves)
 			
 			for i in range(len(valid_moves)):
 				row, col = valid_moves[i]//15, valid_moves[i]%15
@@ -144,6 +157,7 @@ class Agent(object):
 			game = game_copy
 
 			game.flip_board()
+			game._switch_turn()
 			data = self.switch_data(data)
 
 		result[0][1] = np.zeros(len(result[0][0]))
