@@ -152,7 +152,7 @@ class Agent(object):
 		if game.game_over and game.game_over != -1:
 			result[data][2] = True
 			result[data][1][-1] = 1.0
-			reuslt[self.switch_data()][1][-1] = -1.0
+			result[self.switch_data(data)][1][-1] = -1.0
 		
 		result[0][1] = self.discount(result[0][1], self.gamma, False)
 		result[1][1] = self.discount(result[1][1], self.gamma, False)
@@ -211,7 +211,7 @@ class Agent(object):
 		train, target = generate_batch_equiv(train, target)
 
 		train = np.array(train)
-		train = train.reshape(train.shape[0], 15, 15, 1)
+		train = train.reshape(train.shape[0], 15, 15, 3)
 		target = np.array(target)
 		# print(target)
 
