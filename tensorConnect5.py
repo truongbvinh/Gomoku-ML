@@ -20,7 +20,7 @@ generations = 500
 
 class Agent(object):
 
-	def __init__(self, gamma:float = .99, epsilon:float = 0.8, learning:float = 0.002):
+	def __init__(self, gamma:float = .50, epsilon:float = 0.8, learning:float = 0.002):
 		
 		self.gamma = gamma
 		self.board_size = 225
@@ -35,7 +35,7 @@ class Agent(object):
 		"""
 		Automatically updates the epsilon to be 1/(log2(generation))
 		"""
-		if self.epsilon > 0.1 and self.generation > 30:
+		if self.epsilon > 0.1:
 			self.epsilon = 1/log2(self.generation+2)
 		self.generation += 1
 
@@ -117,7 +117,7 @@ class Agent(object):
 					output.flip_board()
 					sys.stdout.write((str(output)))
 					sys.stdout.flush()
-				print("Generation:", self.generation, end="\r")
+				print("Generation:", self.generation)
 			
 			valid_moves = set()
 			for piece in range(225):
@@ -126,8 +126,8 @@ class Agent(object):
 					for i in range(-1,2):
 						for j in range(-1,2):
 							try:
-								if game.gameboard[row+i][col+j] == 0:
-									valid_moves.add((row+i,col+j))
+								if game.gameboard[row+i][col+j] == 0 and row+i > -1 and col+j > -1:
+									valid_moves.add((row+i)*15+col+j)
 							except IndexError:
 								pass
 			valid_moves = list(valid_moves)
@@ -157,7 +157,6 @@ class Agent(object):
 			game = game_copy
 
 			game.flip_board()
-			game._switch_turn()
 			data = self.switch_data(data)
 
 		result[0][1] = np.zeros(len(result[0][0]))
