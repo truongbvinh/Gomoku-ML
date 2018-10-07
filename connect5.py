@@ -189,14 +189,13 @@ class GameBoard:
 	def score_move(self, row, col):
 		"""
 		Assigns a score for the current player's intended placement.
-		Will give extra points of having multiple 
+		Score is == to how many pieces are adjacent in a straight line
+		from the placed piece
 
 		Does not make the move or change the board
 		"""
 		temp = self.copy()
-		if temp.gameboard[row][col] != 0:
-			return -5
-		score = 5
+		score = 1
 
 		# Checking proximity for similar pieces and creating 3's
 		for i in range(-1,2):
@@ -206,13 +205,11 @@ class GameBoard:
 				for k in range(1,5):
 					try:
 						if temp.gameboard[row + (i*k)][col + (j*k)] == temp.turn:
-							score += 5
+							score += 1
 						else:
 							break
 					except:
 						break
-				else:
-					score += 50
 		return score
 
 	def split_board(self):

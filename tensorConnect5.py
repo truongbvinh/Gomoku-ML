@@ -20,7 +20,7 @@ generations = 500
 
 class Agent(object):
 
-	def __init__(self, gamma:float = .50, epsilon:float = 0.8, learning:float = 0.002):
+	def __init__(self, gamma:float = .5, epsilon:float = 0.8, learning:float = 0.002):
 		
 		self.gamma = gamma
 		self.board_size = 225
@@ -148,8 +148,17 @@ class Agent(object):
 
 			game_copy = game.copy()
 			game_copy.make_move(move//15, move%15)
+			score = game.score_move(move//15, move%15)
 
 			result[data][0].append(game.game_state(row, col))
+			result[data][1].append(score)
+			if data == 0:
+				# result[1][-1] will always have an element because first move is made manually
+				result[1][-1] -= score
+			elif data == 1:
+				result[0][-1] -= score
+
+
 			# result[data] contains the results of generating games, 
 			# result[data][0] are the envs, result[data][1] are the moves
 			# result[data][2] contains one elem, True if won, else False
@@ -159,13 +168,15 @@ class Agent(object):
 			game.flip_board()
 			data = self.switch_data(data)
 
-		result[0][1] = np.zeros(len(result[0][0]))
-		result[1][1] = np.zeros(len(result[1][0]))
+		result[0][1] = np.array(result[0][1])
+		result[1][1] = np.array(result[1][1])
 		
 		if game.game_over and game.game_over != -1:
 			result[data][2] = True
-			result[data][1][-1] = 1.0
-			result[self.switch_data(data)][1][-1] = -1.0
+			result[data][1][-1] = 10.0
+			result[self.switch_data(data)][1][-1] = -10.0
+			result[0][1] = result[0][1] / 10
+			result[1][1] = reuslt[1][1] / 10
 		
 		result[0][1] = self.discount(result[0][1], self.gamma, False)
 		result[1][1] = self.discount(result[1][1], self.gamma, False)

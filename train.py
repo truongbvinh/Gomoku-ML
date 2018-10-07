@@ -28,7 +28,7 @@ def change():
     global agent
     list_attr = [key for key in agent.__dict__.keys()]
     while True:
-        attr = input("Which attribute would you like to change? {}\n ('q' to quit)\n".format(list_attr))
+        attr = input("Which attribute would you like to change? {}\n ('q' to quit)\n".format(agent.__dict__.items()))
         if attr.lower() in {"q", "quit"}:
             break
         
